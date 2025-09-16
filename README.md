@@ -114,3 +114,51 @@ Persistent workloads may be affected if:
 • StatefulSets can't reschedule pods elsewhere
 
 • PersistentVolumes are node-local (hostPath, local storage)
+
+## Question: permissions to allow AWS User to see Kubernetes resources (e.g Pods) in AWS Management Console?
+Regarding Amazon EKS: in Ireland, I have one EKS cluster running. After cluster installation, I was not able to see any cluster resources (e.g. Pods) in the AWS Management console EKS user interface. This was fortunately corrected some time ago. Which change or permission setting is needed to allow the Management Console user to view cluster resources in the AWS Management console?
+
+## Answer:
+The issue you experienced is related to EKS cluster authentication and authorization. To view cluster resources (pods, services, etc.) in the AWS Management Console, you need to configure the EKS cluster's RBAC (Role-Based Access Control) to allow your AWS IAM user or role access.
+
+The specific change needed is adding your IAM user/role to the EKS cluster's aws-auth ConfigMap with appropriate permissions. Here's the minimal configuration:
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapUsers: |
+    - userarn: arn:aws:iam::<account-id>:user/<username>
+      username: <username>
+      groups:
+        - system:masters
+```
+
+Or for an IAM role:
+```
+  mapRoles: |
+    - rolearn: arn:aws:iam::<account-id>:role/<role-name>
+      username: <role-name>
+      groups:
+        - system:masters
+```
+
+Apply this with:
+```
+kubectl apply -f aws-auth-configmap.yaml
+```
+
+Alternatively, you can use the AWS CLI to add the mapping:
+
+```
+eksctl create iamidentitymapping \
+  --cluster <cluster-name> \
+  --region eu-west-1 \
+  --arn arn:aws:iam::<account-id>:user/<username> \
+  --group system:masters \
+  --username <username>
+```
+
+This grants the IAM principal cluster-admin permissions, allowing the Management Console to display cluster resources. The system:masters group provides full cluster access - you can use more restrictive groups if needed for production environments.
