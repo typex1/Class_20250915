@@ -163,7 +163,7 @@ eksctl create iamidentitymapping \
 
 This grants the IAM principal cluster-admin permissions, allowing the Management Console to display cluster resources. The system:masters group provides full cluster access - you can use more restrictive groups if needed for production environments.
 
-## Question: Helm revision vs. version
+## Question: Helm release revision vs. version
 
 > Using helm, if you apply a "helm upgrade", does the version number increase?
 
@@ -222,3 +222,51 @@ REVISION        UPDATED                         STATUS          CHART           
 2               Tue Sep 16 10:46:17 2025        superseded      productcatalog_workshop-1.0.0   1.0             Upgrade complete
 3               Tue Sep 16 10:47:17 2025        deployed        productcatalog_workshop-1.0.0   1.0             Rollback to 1
 ```
+
+Follow-up question: In which case is the creation of a new release version suitable, versus a new release revision?
+
+> New Release Version (chart version) is suitable when:
+
+• Adding new features or capabilities to the application
+
+• Making breaking changes to configuration or APIs
+
+• Significant architectural changes
+
+• Major bug fixes that change behavior
+
+• Changes to chart templates, dependencies, or structure
+
+• Following semantic versioning for distribution
+
+New Release Revision (deployment revision) happens automatically when:
+
+• Changing configuration values without updating the chart
+
+• Applying hotfixes using the same chart version
+
+• Rolling back to previous configurations
+
+• Environment-specific tweaks (dev vs prod settings)
+
+• Scaling replicas or resource limits
+
+• Updating secrets or configmaps
+
+Examples:
+```
+# New chart version - you've updated the application code
+helm upgrade myapp ./mychart --version 2.0.0
+
+# New revision only - same chart, different config
+helm upgrade myapp ./mychart --set replicas=5
+
+# New revision only - same chart, different values file
+helm upgrade myapp ./mychart -f production-values.yaml
+```
+
+Rule of thumb:
+
+• Bump chart version when you change what the application does
+
+• Let revisions increment naturally when you change how it's configured
