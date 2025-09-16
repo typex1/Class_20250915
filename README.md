@@ -162,3 +162,63 @@ eksctl create iamidentitymapping \
 ```
 
 This grants the IAM principal cluster-admin permissions, allowing the Management Console to display cluster resources. The system:masters group provides full cluster access - you can use more restrictive groups if needed for production environments.
+
+## Question: Helm revision vs. version
+
+> Using helm, if you apply a "helm upgrade", does the version number increase?
+
+## Answer:
+> No, running helm upgrade does not automatically increase the version number of your Helm chart.
+
+Here's what actually happens:
+
+Chart Version vs Release Revision:
+
+• The chart version is defined in Chart.yaml and only changes when you manually update it
+
+• Helm tracks release revisions internally (1, 2, 3, etc.) which increment with each upgrade
+
+What helm upgrade does:
+
+• Deploys changes to your Kubernetes resources
+
+• Increments the release revision number
+
+• Can use the same chart version or a different one
+
+To increase the chart version, you need to manually edit Chart.yaml:
+```
+apiVersion: v2
+name: my-app
+version: 1.2.0  # Manually increment this
+```
+
+Example workflow:
+```
+# First deployment
+helm install my-app ./chart  # Creates revision 1
+
+# Upgrade with same chart version
+helm upgrade my-app ./chart  # Creates revision 2, same chart version
+
+# Upgrade with new chart version
+# (after manually updating Chart.yaml version)
+helm upgrade my-app ./chart  # Creates revision 3, new chart version
+```
+
+You can check both with:
+```
+helm list                    # Shows chart version
+helm history my-app          # Shows revision history
+```
+The version number is a manual, semantic versioning decision you make as the chart maintainer.
+
+Example from the lab:
+```
+helm history productcatalog
+
+REVISION        UPDATED                         STATUS          CHART                           APP VERSION     DESCRIPTION
+1               Tue Sep 16 10:41:34 2025        superseded      productcatalog_workshop-1.0.0   1.0             Install complete
+2               Tue Sep 16 10:46:17 2025        superseded      productcatalog_workshop-1.0.0   1.0             Upgrade complete
+3               Tue Sep 16 10:47:17 2025        deployed        productcatalog_workshop-1.0.0   1.0             Rollback to 1
+```
