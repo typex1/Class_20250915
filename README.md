@@ -271,7 +271,7 @@ Rule of thumb:
 
 • Let revisions increment naturally when you change how it's configured
 
-## Lab 5 prometheus components mermaid diagram:
+## Lab 4 prometheus components mermaid diagram:
 
 ```mermaid
 graph TB
@@ -369,7 +369,7 @@ graph TB
     class DEP1,DEP2,DEP3,STS1,DS1 controller
 ```
 
-### Lab 5 Grafana architecture:
+### Lab 4 Grafana architecture:
 ```mermaid
 graph TB
     subgraph "Grafana Namespace"
@@ -440,3 +440,97 @@ graph TB
     class ELB external
     class PROM datasource
 ```
+
+## Lab 4 fluentbit components:
+
+```mermaid
+graph TB
+    subgraph "Namespace: fb"
+        DS["DaemonSet: fluentbit (3 pods running)"]
+        CM[ConfigMap: fluent-bit-config]
+        SA[ServiceAccount: fluent-bit]
+
+        subgraph "Running Pods"
+            POD1[Pod: fluentbit-2b8nt]
+            POD2[Pod: fluentbit-hfrlf]
+            POD3[Pod: fluentbit-tlwpw]
+        end
+    end
+
+    subgraph "Cluster Level RBAC"
+        CR[ClusterRole: pod-log-reader]
+        CRB[ClusterRoleBinding: pod-log-crb]
+    end
+
+    subgraph "Host System Volumes"
+        VL["/var/log (Host Path)"]
+        VLD["/var/lib/docker/containers (ReadOnly)"]
+        MNT["/mnt (ReadOnly)"]
+    end
+
+    subgraph "External Services"
+        KF["Kinesis Firehose: eks-stream (eu-west-2)"]
+        K8S["Kubernetes API Server"]
+    end
+
+    subgraph "Container Details"
+        CONT["aws-for-fluent-bit:2.31.12"]
+    end
+
+    %% Core relationships
+    DS --> POD1
+    DS --> POD2
+    DS --> POD3
+    POD1 --> CONT
+    POD2 --> CONT
+    POD3 --> CONT
+    DS -.-> SA
+
+    %% Configuration
+    CM --> CONT
+
+    %% RBAC
+    SA --> CRB
+    CRB --> CR
+    CR -.-> K8S
+
+    %% Volume mounts
+    VL --> CONT
+    VLD --> CONT
+    MNT --> CONT
+
+    %% Data flow
+    CONT --> KF
+    CONT --> K8S
+
+    %% Styling
+    classDef configResource fill:#e1f5fe
+    classDef rbacResource fill:#f3e5f5
+    classDef workloadResource fill:#e8f5e8
+    classDef externalResource fill:#fff3e0
+    classDef hostResource fill:#fce4ec
+    classDef podResource fill:#f1f8e9
+
+    class CM configResource
+    class CR,CRB,SA rbacResource
+    class DS,CONT workloadResource
+    class POD1,POD2,POD3 podResource
+    class KF,K8S externalResource
+    class VL,VLD,MNT hostResource
+```
+
+## Live FluentBit Resources Summary
+
+**Active Components:**
+- **DaemonSet**: `fluentbit` with 3 running pods across cluster nodes
+- **Pods**: `fluentbit-2b8nt`, `fluentbit-hfrlf`, `fluentbit-tlwpw`
+- **ConfigMap**: `fluent-bit-config` with FluentBit configuration and CRI parser
+- **ServiceAccount**: `fluent-bit` for pod identity
+- **ClusterRole**: `pod-log-reader` with permissions to read pods/namespaces
+- **ClusterRoleBinding**: `pod-log-crb` linking ServiceAccount to ClusterRole
+
+**Data Flow:**
+1. Each pod reads container logs from `/var/log/containers/*.log`
+2. Applies CRI parser to process Docker/containerd log format
+3. Injects Kubernetes metadata via API server calls
+4. Sends processed logs to Kinesis Firehose stream `eks-stream` in `eu-west-2`
