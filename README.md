@@ -270,3 +270,101 @@ Rule of thumb:
 • Bump chart version when you change what the application does
 
 • Let revisions increment naturally when you change how it's configured
+
+## Lab 5 prometheus components mermaid diagram:
+
+```mermaid
+graph TB
+    subgraph "Prometheus Namespace"
+        subgraph "Storage"
+            PV1[PV: pvc-c27f0be5...]
+            PV2[PV: pvc-e592a9e7...]
+            PVC1[PVC: prometheus-server]
+            PVC2[PVC: storage-prometheus-alertmanager-0]
+        end
+
+        subgraph "Configuration"
+            CM1[ConfigMap: prometheus-server]
+            CM2[ConfigMap: prometheus-alertmanager]
+        end
+
+        subgraph "Core Components"
+            PS[Pod: prometheus-server]
+            PA[Pod: prometheus-alertmanager-0]
+
+            SVC1[Service: prometheus-server]
+            SVC2[Service: prometheus-alertmanager]
+            SVC3[Service: prometheus-alertmanager-headless]
+        end
+
+        subgraph "Metrics Collection"
+            KSM[Pod: kube-state-metrics]
+            NE1[Pod: node-exporter-1]
+            NE2[Pod: node-exporter-2]
+            NE3[Pod: node-exporter-3]
+            PG[Pod: prometheus-pushgateway]
+
+            SVC4[Service: kube-state-metrics]
+            SVC5[Service: node-exporter]
+            SVC6[Service: prometheus-pushgateway]
+        end
+
+        subgraph "Workload Controllers"
+            DEP1[Deployment: prometheus-server]
+            DEP2[Deployment: kube-state-metrics]
+            DEP3[Deployment: prometheus-pushgateway]
+            STS1[StatefulSet: prometheus-alertmanager]
+            DS1[DaemonSet: node-exporter]
+        end
+    end
+
+    %% Storage relationships
+    PVC1 --> PV1
+    PVC2 --> PV2
+    PS --> PVC1
+    PA --> PVC2
+
+    %% Configuration relationships
+    PS --> CM1
+    PA --> CM2
+
+    %% Service relationships
+    SVC1 --> PS
+    SVC2 --> PA
+    SVC3 --> PA
+    SVC4 --> KSM
+    SVC5 --> NE1
+    SVC5 --> NE2
+    SVC5 --> NE3
+    SVC6 --> PG
+
+    %% Controller relationships
+    DEP1 --> PS
+    DEP2 --> KSM
+    DEP3 --> PG
+    STS1 --> PA
+    DS1 --> NE1
+    DS1 --> NE2
+    DS1 --> NE3
+
+    %% Metrics flow
+    PS -.->|scrapes| KSM
+    PS -.->|scrapes| NE1
+    PS -.->|scrapes| NE2
+    PS -.->|scrapes| NE3
+    PS -.->|scrapes| PG
+    PS -.->|alerts| PA
+
+    %% Styling
+    classDef storage fill:#e1f5fe
+    classDef config fill:#f3e5f5
+    classDef core fill:#e8f5e8
+    classDef metrics fill:#fff3e0
+    classDef controller fill:#fce4ec
+
+    class PV1,PV2,PVC1,PVC2 storage
+    class CM1,CM2 config
+    class PS,PA,SVC1,SVC2,SVC3 core
+    class KSM,NE1,NE2,NE3,PG,SVC4,SVC5,SVC6 metrics
+    class DEP1,DEP2,DEP3,STS1,DS1 controller
+```
