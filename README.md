@@ -368,3 +368,75 @@ graph TB
     class KSM,NE1,NE2,NE3,PG,SVC4,SVC5,SVC6 metrics
     class DEP1,DEP2,DEP3,STS1,DS1 controller
 ```
+
+### Lab 5 Grafana architecture:
+```mermaid
+graph TB
+    subgraph "Grafana Namespace"
+        subgraph "Storage"
+            PV[PV: pvc-d0a41cba...]
+            PVC[PVC: grafana]
+        end
+
+        subgraph "Configuration & Secrets"
+            CM[ConfigMap: grafana]
+            SEC[Secret: grafana]
+        end
+
+        subgraph "Core Component"
+            GP[Pod: grafana]
+            SVC[Service: grafana<br/>LoadBalancer]
+        end
+
+        subgraph "Workload Controller"
+            DEP[Deployment: grafana]
+            RS[ReplicaSet: grafana-7967576954]
+        end
+
+        subgraph "External Access"
+            ELB[AWS ELB<br/>a43cc932d1e3a4b12a3bae1a7d96934a-721596755.eu-west-2.elb.amazonaws.com]
+        end
+    end
+
+    subgraph "External Data Sources"
+        PROM[Prometheus Server<br/>prometheus.prometheus.svc.cluster.local]
+    end
+
+    %% Storage relationships
+    PVC --> PV
+    GP --> PVC
+
+    %% Configuration relationships
+    GP --> CM
+    GP --> SEC
+
+    %% Service relationships
+    SVC --> GP
+    ELB --> SVC
+
+    %% Controller relationships
+    DEP --> RS
+    RS --> GP
+
+    %% Data source relationships
+    GP -.->|queries| PROM
+
+    %% External access flow
+    ELB -.->|port 80| SVC
+    SVC -.->|port 80:31985| GP
+
+    %% Styling
+    classDef storage fill:#e1f5fe
+    classDef config fill:#f3e5f5
+    classDef core fill:#e8f5e8
+    classDef controller fill:#fce4ec
+    classDef external fill:#fff3e0
+    classDef datasource fill:#f1f8e9
+
+    class PV,PVC storage
+    class CM,SEC config
+    class GP,SVC core
+    class DEP,RS controller
+    class ELB external
+    class PROM datasource
+```
