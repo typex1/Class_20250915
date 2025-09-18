@@ -1,4 +1,4 @@
-# Class 20250915
+# EKS Class 20250915
 Q and A during the class
 
 ## Question: Pod restart after config change?
